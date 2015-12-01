@@ -81,6 +81,10 @@ module.exports = function (license, config, rate) {
     return through.obj(function (file, enc, cb) {
         license = license || '';
         rate = rate || 0.8;
+        // rate must be [0-1].
+        if (rate > 1 || rate <= 0) {
+            rate = 0.8;
+        }
 
         var template = config === false ? license : gutil.template(license, extend({
             file: ''
