@@ -11,7 +11,7 @@ npm install gulp-header-license --save-dev
 
 # Basic Usage
 
-Something like this will add license t0 your file(s):
+Something like this will add license to your file(s):
 
 ```javascript
 var gulp = require("gulp");
@@ -37,7 +37,7 @@ var fs = require('fs');
 gulp.task('license', function () {
     var year = (new Date()).getFullYear();
     gulp.src('./assets/**/*.js')
-            .pipe(license(fs.readFileSync('header.txt', 'utf8'), {year: year}))
+            .pipe(license(fs.readFileSync('header.txt', 'utf8'), {year: year}, 0.9))
             .pipe(gulp.dest('./public/'));
 });
 ```
@@ -50,4 +50,10 @@ The license template string.
 **config**:JSON
 
 The JSON object used to populate the license template.
+
+
+**rate**:Float, default value is 0.8. 
+
+Less then this rate, add license, otherwise update license. 
+
 
