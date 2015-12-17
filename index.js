@@ -8,7 +8,7 @@
  * @file gulp plugin for header license.
  * 
  * @author <a href="mailto:liliyuan@fangstar.net">Liyuan Li</a>
- * @version 0.1.1.0, Dec 1, 2015 
+ * @version 0.1.2.0, Dec 17, 2015 
  */
 
 'use strict';
@@ -30,20 +30,22 @@ module.exports = function (license, config, rate) {
     /**
      * According to rate, get matching.
      * 
-     * @param {object} file
+     * @param {object} file nodeJS file object.
      * @param {string} license The license template string.
      * @param {float} rate Matching rate.
-     * @returns {boolean} dose match
+     * @returns {boolean} dose match.
      */
     function isMatch(file, license, rate) {
+        var srcNLReg = getSeparator(file.contents.toString('utf8'));
         var srcLines = file.contents.toString('utf8').split(/\r?\n/),
                 templateLines = license.split(/\r?\n/),
                 type = path.extname(file.path),
-                matchCnt = 0;
+                matchCnt = 0,
+                matchRates = 0;
 
         // count match line
         for (var i = 0, iMax = templateLines.length; i < iMax; i++) {
-            // TODO: template has one line
+            matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
             switch (type) {
                 case '.php':
                     if (srcLines[i + 1] === templateLines[i]) {
@@ -59,23 +61,80 @@ module.exports = function (license, config, rate) {
         }
 
         // has similar license, remove the license.
-        var matchPer = matchCnt / templateLines.length;
+        var matchPer = matchRates / templateLines.length;
+
         if (matchPer >= rate && matchPer < 1) {
             // remove
             switch (type) {
                 case '.php':
-                    srcLines.splice(1, templateLines.length);
-                    file.contents = new Buffer(srcLines.join('\n'));
+                    // after license, should be have a blank line. if have not, we don't need remove blank line.
+                    if (srcLines[templateLines.length + 1] === '') {
+                        srcLines.splice(1, templateLines.length - 1);
+                    } else {
+                        srcLines.splice(1, templateLines.length);
+                    }
+                    file.contents = new Buffer(srcLines.join(srcNLReg));
                     break;
                 default:
-                    srcLines.splice(0, templateLines.length + 1);
-                    file.contents = new Buffer(srcLines.join('\n'));
+                    // after license, should be have a blank line. if have not, we don't need remove blank line.
+                    if (srcLines[templateLines.length - 1] === '') {
+                        srcLines.splice(0, templateLines.length);
+                    } else {
+                        srcLines.splice(0, templateLines.length - 1);
+                    }
+                    file.contents = new Buffer(srcLines.join(srcNLReg));
                     break;
             }
             return false;
-        } else if (matchCnt === templateLines.length) {
+        } else if (matchCnt === templateLines.length || matchPer === 1) {
             return true;
         }
+    }
+
+    /**
+     * Compare each character for ever line, and get ever line match rate. 
+     * 
+     * @param {type} src text for template.
+     * @param {type} str text for file.
+     * @returns {float} match rate.
+     */
+    function getMatchRate(src, str) {
+        var maxLength = src.length > str.length ? src.length : str.length,
+                matchCnt = 0;
+        if (maxLength === 0) {
+            return 1;
+        }
+        
+        for (var i = 0; i < maxLength; i++) {
+            if (str.charAt(i) === src.charAt(i)) {
+                matchCnt++;
+            }
+        }
+        
+        if (matchCnt === 0) {
+            return 0;
+        }
+        
+        return matchCnt / maxLength;
+    }
+
+    /**
+     * Test first newline character and get newline character.
+     * 
+     * @param {type} str file content.
+     * @returns {String} newline character.
+     */
+    function getSeparator(str) {
+        // 13 \r 10 \n
+        if (/\r\n/.test(str)) {
+            return '\r\n';
+        }
+
+        if (/\n\r/.test(str)) {
+            return '\n\r';
+        }
+
+        return /\r/.test(str) ? '\r' : '\n';
     }
 
     return through.obj(function (file, enc, cb) {
@@ -86,24 +145,29 @@ module.exports = function (license, config, rate) {
             rate = 0.8;
         }
 
+        // merage template & config data
         var template = config === false ? license : gutil.template(license, extend({
             file: ''
         }, config));
 
-        // use \n instead of /\r?\n/
-        template = template.split(/\r?\n/).join('\n');
 
         if (!isMatch(file, template, rate)) {
             // add Template
             var type = path.extname(file.path);
             switch (type) {
                 case '.php':
+                    var srcNLReg = getSeparator(file.contents.toString('utf8'));
                     var srcLines = file.contents.toString('utf8').split(/\r?\n/);
-                    srcLines.splice(1, 0, template);
-                    file.contents = new Buffer(srcLines.join('\n'), 'utf8');
+                    if (srcLines[1] === '') {
+                        // if after '<?php' has blank line, need to remove this line.
+                        srcLines.splice(1, 1, template);
+                    } else {
+                        srcLines.splice(1, 0, template);
+                    }
+                    file.contents = new Buffer(srcLines.join(srcNLReg), 'utf8');
                     break;
                 default:
-                    file.contents = new Buffer(template + '\n\n' + file.contents, 'utf8');
+                    file.contents = new Buffer(template + '\r\n' + file.contents, 'utf8');
                     break;
             }
         }
