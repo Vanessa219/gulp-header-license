@@ -8,7 +8,7 @@
  * @file gulp plugin for header license.
  * 
  * @author <a href="mailto:liliyuan@fangstar.net">Liyuan Li</a>
- * @version 0.1.2.0, Dec 17, 2015 
+ * @version 0.1.2.1, Jan 4, 2016
  */
 
 'use strict';
@@ -40,22 +40,26 @@ module.exports = function (license, config, rate) {
         var srcLines = file.contents.toString('utf8').split(/\r?\n/),
                 templateLines = license.split(/\r?\n/),
                 type = path.extname(file.path),
-                matchCnt = 0,
                 matchRates = 0;
+
+        // after '<?php' has new line, remove it 
+        switch (type) {
+            case '.php':
+                if (srcLines[1] === '')
+                srcLines.splice(1, 1);
+                break;
+            default:
+                break;
+        }
 
         // count match line
         for (var i = 0, iMax = templateLines.length; i < iMax; i++) {
-            matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
             switch (type) {
                 case '.php':
-                    if (srcLines[i + 1] === templateLines[i]) {
-                        matchCnt++;
-                    }
+                    matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
                     break;
                 default:
-                    if (srcLines[i] === templateLines[i]) {
-                        matchCnt++;
-                    }
+                    matchRates += getMatchRate(srcLines[i], templateLines[i]);
                     break;
             }
         }
@@ -68,7 +72,7 @@ module.exports = function (license, config, rate) {
             switch (type) {
                 case '.php':
                     // after license, should be have a blank line. if have not, we don't need remove blank line.
-                    if (srcLines[templateLines.length + 1] === '') {
+                    if (srcLines[templateLines.length + 1].replace(/\s/,'') === '') {
                         srcLines.splice(1, templateLines.length - 1);
                     } else {
                         srcLines.splice(1, templateLines.length);
@@ -77,7 +81,7 @@ module.exports = function (license, config, rate) {
                     break;
                 default:
                     // after license, should be have a blank line. if have not, we don't need remove blank line.
-                    if (srcLines[templateLines.length - 1] === '') {
+                    if (srcLines[templateLines.length - 1].replace(/\s/,'') === '') {
                         srcLines.splice(0, templateLines.length);
                     } else {
                         srcLines.splice(0, templateLines.length - 1);
@@ -86,7 +90,7 @@ module.exports = function (license, config, rate) {
                     break;
             }
             return false;
-        } else if (matchCnt === templateLines.length || matchPer === 1) {
+        } else if (matchPer === 1) {
             return true;
         }
     }
@@ -104,17 +108,17 @@ module.exports = function (license, config, rate) {
         if (maxLength === 0) {
             return 1;
         }
-        
+
         for (var i = 0; i < maxLength; i++) {
             if (str.charAt(i) === src.charAt(i)) {
                 matchCnt++;
             }
         }
-        
+
         if (matchCnt === 0) {
             return 0;
         }
-        
+
         return matchCnt / maxLength;
     }
 
@@ -179,4 +183,3 @@ module.exports = function (license, config, rate) {
         cb();
     });
 };
-
