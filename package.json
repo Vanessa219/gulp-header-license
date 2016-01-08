@@ -1,6 +1,6 @@
 {
   "name": "gulp-header-license",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Gulp extension to add license to file(s) in the pipeline.",
   "main": "./index.js",
   "scripts": {

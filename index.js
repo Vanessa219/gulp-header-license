@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2015, fangstar.com
+ * Copyright (c) 2015-2016, fangstar.com
  * 
  * All rights reserved.
  */
@@ -8,7 +8,7 @@
  * @file gulp plugin for header license.
  * 
  * @author <a href="mailto:liliyuan@fangstar.net">Liyuan Li</a>
- * @version 0.1.2.1, Jan 4, 2016
+ * @version 0.1.3.1, Jan 8, 2016
  */
 
 'use strict';
@@ -33,10 +33,10 @@ module.exports = function (license, config, rate) {
      * @param {object} file nodeJS file object.
      * @param {string} license The license template string.
      * @param {float} rate Matching rate.
+     * @param {string} srcNLReg new line char code.
      * @returns {boolean} dose match.
      */
-    function isMatch(file, license, rate) {
-        var srcNLReg = getSeparator(file.contents.toString('utf8'));
+    function isMatch(file, license, rate, srcNLReg) {
         var srcLines = file.contents.toString('utf8').split(/\r?\n/),
                 templateLines = license.split(/\r?\n/),
                 type = path.extname(file.path),
@@ -46,14 +46,15 @@ module.exports = function (license, config, rate) {
         switch (type) {
             case '.php':
                 if (srcLines[1] === '')
-                srcLines.splice(1, 1);
+                    srcLines.splice(1, 1);
                 break;
             default:
                 break;
         }
 
         // count match line
-        for (var i = 0, iMax = templateLines.length; i < iMax; i++) {
+        var minLength = templateLines.length > srcLines.length ? srcLines.length : templateLines.length;
+        for (var i = 0; i < minLength; i++) {
             switch (type) {
                 case '.php':
                     matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
@@ -72,7 +73,7 @@ module.exports = function (license, config, rate) {
             switch (type) {
                 case '.php':
                     // after license, should be have a blank line. if have not, we don't need remove blank line.
-                    if (srcLines[templateLines.length + 1].replace(/\s/,'') === '') {
+                    if (srcLines[templateLines.length + 1].replace(/\s/, '') === '') {
                         srcLines.splice(1, templateLines.length - 1);
                     } else {
                         srcLines.splice(1, templateLines.length);
@@ -81,7 +82,7 @@ module.exports = function (license, config, rate) {
                     break;
                 default:
                     // after license, should be have a blank line. if have not, we don't need remove blank line.
-                    if (srcLines[templateLines.length - 1].replace(/\s/,'') === '') {
+                    if (srcLines[templateLines.length - 1].replace(/\s/, '') === '') {
                         srcLines.splice(0, templateLines.length);
                     } else {
                         srcLines.splice(0, templateLines.length - 1);
@@ -103,6 +104,9 @@ module.exports = function (license, config, rate) {
      * @returns {float} match rate.
      */
     function getMatchRate(src, str) {
+        if (!src) {
+            return 0;
+        }
         var maxLength = src.length > str.length ? src.length : str.length,
                 matchCnt = 0;
         if (maxLength === 0) {
@@ -130,15 +134,27 @@ module.exports = function (license, config, rate) {
      */
     function getSeparator(str) {
         // 13 \r 10 \n
-        if (/\r\n/.test(str)) {
-            return '\r\n';
-        }
+        for (var i = str.length; i > -1; i--) {
+            if (str.charCodeAt(i) === 10) {
+                if (str.charCodeAt(i - 1) === 13) {
+                    return '\r\n';
+                }
+                if (str.charCodeAt(i + 1) === 13) {
+                    return '\n\r';
+                }
+                return '\n';
+            }
 
-        if (/\n\r/.test(str)) {
-            return '\n\r';
+            if (str.charCodeAt(i) === 13) {
+                if (str.charCodeAt(i - 1) === 10) {
+                    return '\n\r';
+                }
+                if (str.charCodeAt(i + 1) === 10) {
+                    return '\r\n';
+                }
+                return '\r';
+            }
         }
-
-        return /\r/.test(str) ? '\r' : '\n';
     }
 
     return through.obj(function (file, enc, cb) {
@@ -153,14 +169,17 @@ module.exports = function (license, config, rate) {
         var template = config === false ? license : gutil.template(license, extend({
             file: ''
         }, config));
+        var srcNLReg = getSeparator(file.contents.toString('utf8'));
 
+        // new line char code must match file new line char code.
+        // when template use windows new line char code, but file use unix new line char code, it will show '^m' in template.
+        template = template.split(/\r?\n/).join(srcNLReg);
 
-        if (!isMatch(file, template, rate)) {
+        if (!isMatch(file, template, rate, srcNLReg)) {
             // add Template
             var type = path.extname(file.path);
             switch (type) {
                 case '.php':
-                    var srcNLReg = getSeparator(file.contents.toString('utf8'));
                     var srcLines = file.contents.toString('utf8').split(/\r?\n/);
                     if (srcLines[1] === '') {
                         // if after '<?php' has blank line, need to remove this line.
@@ -171,7 +190,7 @@ module.exports = function (license, config, rate) {
                     file.contents = new Buffer(srcLines.join(srcNLReg), 'utf8');
                     break;
                 default:
-                    file.contents = new Buffer(template + '\r\n' + file.contents, 'utf8');
+                    file.contents = new Buffer(template + srcNLReg + file.contents, 'utf8');
                     break;
             }
         }
