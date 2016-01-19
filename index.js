@@ -8,7 +8,7 @@
  * @file gulp plugin for header license.
  * 
  * @author <a href="mailto:liliyuan@fangstar.net">Liyuan Li</a>
- * @version 0.1.3.1, Jan 8, 2016
+ * @version 0.1.4.1, Jan 19, 2016
  */
 
 'use strict';
@@ -40,13 +40,16 @@ module.exports = function (license, config, rate) {
         var srcLines = file.contents.toString('utf8').split(/\r?\n/),
                 templateLines = license.split(/\r?\n/),
                 type = path.extname(file.path),
-                matchRates = 0;
+                matchRates = 0,
+                removed = false;
 
         // after '<?php' has new line, remove it 
         switch (type) {
             case '.php':
-                if (srcLines[1] === '')
+                if (srcLines[1] === '') {
                     srcLines.splice(1, 1);
+                    removed = true;
+                }
                 break;
             default:
                 break;
@@ -55,13 +58,17 @@ module.exports = function (license, config, rate) {
         // count match line
         var minLength = templateLines.length > srcLines.length ? srcLines.length : templateLines.length;
         for (var i = 0; i < minLength; i++) {
-            switch (type) {
-                case '.php':
-                    matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
-                    break;
-                default:
-                    matchRates += getMatchRate(srcLines[i], templateLines[i]);
-                    break;
+            if (templateLines[templateLines.length - 1] === '' && i === templateLines.length - 1) {
+                matchRates += 1;
+            } else {
+                switch (type) {
+                    case '.php':
+                        matchRates += getMatchRate(srcLines[i + 1], templateLines[i]);
+                        break;
+                    default:
+                        matchRates += getMatchRate(srcLines[i], templateLines[i]);
+                        break;
+                }
             }
         }
 
@@ -72,8 +79,8 @@ module.exports = function (license, config, rate) {
             // remove
             switch (type) {
                 case '.php':
-                    // after license, should be have a blank line. if have not, we don't need remove blank line.
-                    if (srcLines[templateLines.length + 1].replace(/\s/, '') === '') {
+                    if (srcLines[templateLines.length + 1].replace(/\s/, '') === '' || removed) {
+                        // after license, should be have a blank line. if have not, we don't need remove blank line. || after '<?php' has new line, remove it.
                         srcLines.splice(1, templateLines.length - 1);
                     } else {
                         srcLines.splice(1, templateLines.length);
@@ -104,9 +111,10 @@ module.exports = function (license, config, rate) {
      * @returns {float} match rate.
      */
     function getMatchRate(src, str) {
-        if (!src) {
+        if (typeof (src) === 'undefined' || typeof (str) === 'undefined') {
             return 0;
         }
+
         var maxLength = src.length > str.length ? src.length : str.length,
                 matchCnt = 0;
         if (maxLength === 0) {
