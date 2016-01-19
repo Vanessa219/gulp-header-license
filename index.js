@@ -46,7 +46,7 @@ module.exports = function (license, config, rate) {
         // after '<?php' has new line, remove it 
         switch (type) {
             case '.php':
-                if (srcLines[1] === '') {
+                if (srcLines[1].replace(/\s/, '') === '') {
                     srcLines.splice(1, 1);
                     removed = true;
                 }
@@ -79,11 +79,11 @@ module.exports = function (license, config, rate) {
             // remove
             switch (type) {
                 case '.php':
-                    if (srcLines[templateLines.length + 1].replace(/\s/, '') === '' || removed) {
-                        // after license, should be have a blank line. if have not, we don't need remove blank line. || after '<?php' has new line, remove it.
-                        srcLines.splice(1, templateLines.length - 1);
-                    } else {
+                    if (srcLines[templateLines.length].replace(/\s/, '') === '' && !removed) {
+                        // after license, should be have a blank line. if has not, we don't need remove blank line. && after '<?php' has not new line
                         srcLines.splice(1, templateLines.length);
+                    } else {
+                        srcLines.splice(1, templateLines.length - 1);
                     }
                     file.contents = new Buffer(srcLines.join(srcNLReg));
                     break;
