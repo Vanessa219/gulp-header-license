@@ -162,6 +162,8 @@ module.exports = function (license, config, rate) {
                 }
                 return '\r';
             }
+
+            return '\r';
         }
     }
 
