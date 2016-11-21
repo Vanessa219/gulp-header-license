@@ -8,7 +8,7 @@
  * @file gulp plugin for header license.
  * 
  * @author <a href="mailto:liliyuan@fangstar.net">Liyuan Li</a>
- * @version 0.1.4.1, Jan 19, 2016
+ * @version 0.1.5.1, Nov 21, 2016
  */
 
 'use strict';
@@ -140,7 +140,7 @@ module.exports = function (license, config, rate) {
      * @param {type} str file content.
      * @returns {String} newline character.
      */
-    function getSeparator(str) {
+    function getSeparator(str, str2) {
         // 13 \r 10 \n
         for (var i = str.length; i > -1; i--) {
             if (str.charCodeAt(i) === 10) {
@@ -162,9 +162,31 @@ module.exports = function (license, config, rate) {
                 }
                 return '\r';
             }
-
-            return '\r';
         }
+
+        // if file no newline, will use template
+        for (var i = str2.length; i > -1; i--) {
+            if (str2.charCodeAt(i) === 10) {
+                if (str2.charCodeAt(i - 1) === 13) {
+                    return '\r\n';
+                }
+                if (str2.charCodeAt(i + 1) === 13) {
+                    return '\n\r';
+                }
+                return '\n';
+            }
+
+            if (str2.charCodeAt(i) === 13) {
+                if (str2.charCodeAt(i - 1) === 10) {
+                    return '\n\r';
+                }
+                if (str2.charCodeAt(i + 1) === 10) {
+                    return '\r\n';
+                }
+                return '\r';
+            }
+        }
+
     }
 
     return through.obj(function (file, enc, cb) {
@@ -179,7 +201,7 @@ module.exports = function (license, config, rate) {
         var template = config === false ? license : gutil.template(license, extend({
             file: ''
         }, config));
-        var srcNLReg = getSeparator(file.contents.toString('utf8'));
+        var srcNLReg = getSeparator(file.contents.toString('utf8'), template);
 
         // new line char code must match file new line char code.
         // when template use windows new line char code, but file use unix new line char code, it will show '^m' in template.
