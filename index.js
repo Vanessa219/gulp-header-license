@@ -15,7 +15,7 @@
 
 var extend = require('object-assign');
 var through = require('through2');
-var gutil = require('gulp-util');
+var template = require('lodash.template');
 var path = require('path');
 
 /**
@@ -197,8 +197,8 @@ module.exports = function (license, config, rate) {
             rate = 0.8;
         }
 
-        // merage template & config data
-        var template = config === false ? license : gutil.template(license, extend({
+        // merge template & config data
+        var template = config === false ? license : template(license)(extend({
             file: ''
         }, config));
         var srcNLReg = getSeparator(file.contents.toString('utf8'), template);
