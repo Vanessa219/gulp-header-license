@@ -15,7 +15,7 @@
 
 var extend = require('object-assign');
 var through = require('through2');
-var template = require('lodash.template');
+var lodashTemplate = require('lodash.template');
 var path = require('path');
 
 /**
@@ -198,7 +198,7 @@ module.exports = function (license, config, rate) {
         }
 
         // merge template & config data
-        var template = config === false ? license : template(license)(extend({
+        var template = config === false ? license : lodashTemplate(license)(extend({
             file: ''
         }, config));
         var srcNLReg = getSeparator(file.contents.toString('utf8'), template);
